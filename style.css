@@ -42,6 +42,8 @@ html, body {
 }
 #menubar button:hover { background: #f0f0f0; }
 #menubar button:active { background: #e2e2e2; }
+#menubar button:disabled { opacity: 0.4; cursor: default; }
+#menubar button:disabled:hover { background: #fff; }
 #menubar .sep {
   width: 1px;
   height: 20px;
@@ -157,6 +159,11 @@ html, body {
   justify-content: flex-start;
   padding: 24px;
 }
+#canvasArea.drag-over {
+  outline: 3px dashed var(--accent);
+  outline-offset: -3px;
+  background: #5f6c78;
+}
 #canvasWrap {
   position: relative;
   background: #fff;
@@ -206,6 +213,10 @@ html, body {
   gap: 10px;
   margin-bottom: 8px;
   font-size: 13px;
+}
+.dialog-box label.checkbox-row {
+  justify-content: flex-start;
+  align-items: center;
 }
 .dialog-box input[type=number] { width: 100px; }
 .dialog-actions {

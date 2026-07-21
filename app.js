@@ -42,10 +42,16 @@
     if (history.stack.length > history.max) history.stack.shift();
     history.index = history.stack.length - 1;
   }
+  let restoreToken = 0;
   function restoreHistory(i) {
     if (i < 0 || i >= history.stack.length) return;
+    const token = ++restoreToken;
     const img = new Image();
     img.onload = () => {
+      if (token !== restoreToken) return; // a newer restore was requested since this one started; discard
+      if (img.width !== mainCanvas.width || img.height !== mainCanvas.height) {
+        setCanvasSize(img.width, img.height, false);
+      }
       mctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
       mctx.drawImage(img, 0, 0);
     };
@@ -100,6 +106,7 @@
     sel.buffer = null;
     sel.mode = 'idle';
     clearOverlay();
+    updateImageButtons();
   }
 
   function deleteSelectionContents() {
@@ -114,11 +121,17 @@
     sel.buffer = null;
     sel.mode = 'idle';
     clearOverlay();
+    updateImageButtons();
+  }
+
+  function updateImageButtons() {
+    document.getElementById('cropBtn').disabled = !sel.active;
   }
 
   function clearOverlay() { octx.clearRect(0, 0, overlay.width, overlay.height); }
 
   function drawSelectionOverlay() {
+    updateImageButtons();
     clearOverlay();
     if (!sel.active) return;
     if (sel.floating && sel.buffer) {
@@ -166,6 +179,66 @@
   function cursorForHandle(name) {
     const map = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' };
     return map[name] || 'crosshair';
+  }
+
+  // ---------- image editing (crop / rotate / flip / resize) ----------
+  function cropToSelection() {
+    if (!sel.active || sel.w < 1 || sel.h < 1) return;
+    const { x, y, w, h } = sel;
+    if (sel.floating) commitSelection();
+    const buf = document.createElement('canvas');
+    buf.width = w; buf.height = h;
+    buf.getContext('2d').drawImage(mainCanvas, x, y, w, h, 0, 0, w, h);
+    sel.active = false;
+    sel.floating = false;
+    sel.buffer = null;
+    sel.mode = 'idle';
+    clearOverlay();
+    updateImageButtons();
+    setCanvasSize(w, h, false);
+    mctx.clearRect(0, 0, w, h);
+    mctx.drawImage(buf, 0, 0);
+    pushHistory();
+  }
+
+  function rotateCanvas(clockwise) {
+    if (sel.active) commitSelection();
+    const oldW = mainCanvas.width, oldH = mainCanvas.height;
+    const buf = document.createElement('canvas');
+    buf.width = oldW; buf.height = oldH;
+    buf.getContext('2d').drawImage(mainCanvas, 0, 0);
+    setCanvasSize(oldH, oldW, true);
+    mctx.save();
+    mctx.translate(oldH / 2, oldW / 2);
+    mctx.rotate((clockwise ? 90 : -90) * Math.PI / 180);
+    mctx.drawImage(buf, -oldW / 2, -oldH / 2);
+    mctx.restore();
+    pushHistory();
+  }
+
+  function flipCanvas(axis) {
+    if (sel.active) commitSelection();
+    const w = mainCanvas.width, h = mainCanvas.height;
+    const buf = document.createElement('canvas');
+    buf.width = w; buf.height = h;
+    buf.getContext('2d').drawImage(mainCanvas, 0, 0);
+    mctx.clearRect(0, 0, w, h);
+    mctx.save();
+    if (axis === 'h') { mctx.translate(w, 0); mctx.scale(-1, 1); }
+    else { mctx.translate(0, h); mctx.scale(1, -1); }
+    mctx.drawImage(buf, 0, 0);
+    mctx.restore();
+    pushHistory();
+  }
+
+  function resizeImage(w, h) {
+    if (sel.active) commitSelection();
+    const buf = document.createElement('canvas');
+    buf.width = mainCanvas.width; buf.height = mainCanvas.height;
+    buf.getContext('2d').drawImage(mainCanvas, 0, 0);
+    setCanvasSize(w, h, true);
+    mctx.drawImage(buf, 0, 0, buf.width, buf.height, 0, 0, w, h);
+    pushHistory();
   }
 
   // ---------- coordinate helpers ----------
@@ -563,10 +636,9 @@
     a.click();
   });
 
-  document.getElementById('openBtn').addEventListener('click', () => document.getElementById('fileInput').click());
-  document.getElementById('fileInput').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  function loadImageFromFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    if (sel.active) commitSelection();
     const img = new Image();
     img.onload = () => {
       setCanvasSize(img.width, img.height, false);
@@ -574,9 +646,90 @@
       mctx.drawImage(img, 0, 0);
       history.stack = []; history.index = -1;
       pushHistory();
+      URL.revokeObjectURL(img.src);
     };
     img.src = URL.createObjectURL(file);
+  }
+
+  document.getElementById('openBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+  document.getElementById('fileInput').addEventListener('change', (e) => {
+    loadImageFromFile(e.target.files[0]);
     e.target.value = '';
+  });
+
+  const canvasArea = document.getElementById('canvasArea');
+  ['dragenter', 'dragover'].forEach(evt => canvasArea.addEventListener(evt, (e) => {
+    e.preventDefault();
+    canvasArea.classList.add('drag-over');
+  }));
+  ['dragleave', 'drop'].forEach(evt => canvasArea.addEventListener(evt, (e) => {
+    e.preventDefault();
+    canvasArea.classList.remove('drag-over');
+  }));
+  canvasArea.addEventListener('drop', (e) => {
+    loadImageFromFile(e.dataTransfer.files && e.dataTransfer.files[0]);
+  });
+
+  window.addEventListener('paste', (e) => {
+    if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        const img = new Image();
+        img.onload = () => {
+          const buf = document.createElement('canvas');
+          buf.width = img.width; buf.height = img.height;
+          buf.getContext('2d').drawImage(img, 0, 0);
+          if (sel.active) commitSelection();
+          selectTool('select');
+          sel.active = true;
+          sel.x = 0; sel.y = 0;
+          sel.w = img.width; sel.h = img.height;
+          sel.buffer = buf;
+          sel.floating = true;
+          sel.mode = 'idle';
+          drawSelectionOverlay();
+          URL.revokeObjectURL(img.src);
+        };
+        img.src = URL.createObjectURL(file);
+        return;
+      }
+    }
+  });
+
+  document.getElementById('cropBtn').addEventListener('click', cropToSelection);
+  document.getElementById('rotateCcwBtn').addEventListener('click', () => rotateCanvas(false));
+  document.getElementById('rotateCwBtn').addEventListener('click', () => rotateCanvas(true));
+  document.getElementById('flipHBtn').addEventListener('click', () => flipCanvas('h'));
+  document.getElementById('flipVBtn').addEventListener('click', () => flipCanvas('v'));
+
+  const resizeDialog = document.getElementById('resizeDialog');
+  let resizeAspect = 1;
+  document.getElementById('resizeBtn').addEventListener('click', () => {
+    document.getElementById('resizeWidth').value = mainCanvas.width;
+    document.getElementById('resizeHeight').value = mainCanvas.height;
+    resizeAspect = mainCanvas.width / mainCanvas.height;
+    resizeDialog.classList.remove('hidden');
+  });
+  document.getElementById('resizeCancel').addEventListener('click', () => resizeDialog.classList.add('hidden'));
+  document.getElementById('resizeWidth').addEventListener('input', (e) => {
+    if (!document.getElementById('resizeLockAspect').checked) return;
+    const w = parseInt(e.target.value, 10);
+    if (w > 0) document.getElementById('resizeHeight').value = Math.round(w / resizeAspect);
+  });
+  document.getElementById('resizeHeight').addEventListener('input', (e) => {
+    if (!document.getElementById('resizeLockAspect').checked) return;
+    const h = parseInt(e.target.value, 10);
+    if (h > 0) document.getElementById('resizeWidth').value = Math.round(h * resizeAspect);
+  });
+  document.getElementById('resizeOk').addEventListener('click', () => {
+    const w = Math.max(1, parseInt(document.getElementById('resizeWidth').value, 10) || mainCanvas.width);
+    const h = Math.max(1, parseInt(document.getElementById('resizeHeight').value, 10) || mainCanvas.height);
+    resizeImage(w, h);
+    resizeDialog.classList.add('hidden');
   });
 
   const newDialog = document.getElementById('newDialog');

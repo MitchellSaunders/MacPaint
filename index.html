@@ -18,6 +18,13 @@
     <span class="sep"></span>
     <button id="undoBtn" title="Undo (Cmd+Z)">Undo</button>
     <button id="redoBtn" title="Redo (Shift+Cmd+Z)">Redo</button>
+    <span class="sep"></span>
+    <button id="cropBtn" title="Crop to selection" disabled>Crop</button>
+    <button id="rotateCcwBtn" title="Rotate 90° counter-clockwise">⟲</button>
+    <button id="rotateCwBtn" title="Rotate 90° clockwise">⟳</button>
+    <button id="flipHBtn" title="Flip horizontal">⇋</button>
+    <button id="flipVBtn" title="Flip vertical">⇵</button>
+    <button id="resizeBtn" title="Resize image">Resize</button>
   </div>
 
   <div id="main">
@@ -103,6 +110,19 @@
     <div class="dialog-actions">
       <button id="newCancel">Cancel</button>
       <button id="newOk">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="resizeDialog" class="dialog hidden">
+  <div class="dialog-box">
+    <h3>Resize Image</h3>
+    <label>Width <input type="number" id="resizeWidth" min="1" max="8000"></label>
+    <label>Height <input type="number" id="resizeHeight" min="1" max="8000"></label>
+    <label class="checkbox-row"><input type="checkbox" id="resizeLockAspect" checked> Maintain aspect ratio</label>
+    <div class="dialog-actions">
+      <button id="resizeCancel">Cancel</button>
+      <button id="resizeOk">Resize</button>
     </div>
   </div>
 </div>
