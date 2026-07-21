@@ -277,8 +277,11 @@
   }
   function finishTextInput() {
     if (!textInput) return;
-    const val = textInput.value;
-    const { x, y } = textInput._pos;
+    const input = textInput;
+    textInput = null;
+    input.removeEventListener('blur', finishTextInput);
+    const val = input.value;
+    const { x, y } = input._pos;
     const fontSize = Math.max(12, state.size * 4);
     if (val.trim()) {
       mctx.fillStyle = state.primary;
@@ -287,14 +290,14 @@
       val.split('\n').forEach((line, i) => mctx.fillText(line, x, y + i * fontSize * 1.2));
       pushHistory();
     }
-    textInput.remove();
-    textInput = null;
+    input.remove();
   }
 
   // ---------- pointer events ----------
   overlay.addEventListener('contextmenu', (e) => e.preventDefault());
 
   overlay.addEventListener('mousedown', (e) => {
+    e.preventDefault();
     if (textInput) { finishTextInput(); }
     const pos = getPos(e);
     state.button = e.button;
