@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacPaint</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <div id="menubar">
+    <span class="brand">MacPaint</span>
+    <button id="newBtn" title="New canvas">New</button>
+    <button id="openBtn" title="Open image">Open</button>
+    <input type="file" id="fileInput" accept="image/*" hidden>
+    <button id="saveBtn" title="Save as PNG">Save</button>
+    <span class="sep"></span>
+    <button id="undoBtn" title="Undo (Cmd+Z)">Undo</button>
+    <button id="redoBtn" title="Redo (Shift+Cmd+Z)">Redo</button>
+  </div>
+
+  <div id="main">
+    <div id="toolbar">
+      <div class="tool-grid">
+        <button class="tool" data-tool="select" title="Rectangle Select (S)">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2"/></svg>
+        </button>
+        <button class="tool" data-tool="pencil" title="Pencil (P)">
+          <svg viewBox="0 0 24 24"><path d="M3 21l1-5 12-12 4 4-12 12-5 1z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="tool" data-tool="brush" title="Brush (B)">
+          <svg viewBox="0 0 24 24"><path d="M4 20c4-1 3-5 6-7s5 1 4-3 3-6 6-6-2 5-4 7-6 0-8 3-1 5-4 6z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="tool" data-tool="eraser" title="Eraser (E)">
+          <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="2" transform="rotate(-20 12 12)"/></svg>
+        </button>
+        <button class="tool" data-tool="fill" title="Fill Bucket (F)">
+          <svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9-9 9z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="19" cy="18" r="2" fill="currentColor"/></svg>
+        </button>
+        <button class="tool" data-tool="eyedropper" title="Color Picker (K)">
+          <svg viewBox="0 0 24 24"><path d="M17 3l4 4-3 3-4-4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 6l-9 9v4h4l9-9z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="tool" data-tool="line" title="Line (L)">
+          <svg viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="tool" data-tool="rect" title="Rectangle (R)">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="tool" data-tool="ellipse" title="Ellipse (O)">
+          <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="7" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="tool" data-tool="text" title="Text (T)">
+          <svg viewBox="0 0 24 24"><text x="6" y="18" font-size="16" fill="currentColor">A</text></svg>
+        </button>
+      </div>
+
+      <div class="tool-options">
+        <label class="opt-row">
+          Size
+          <input type="range" id="sizeRange" min="1" max="50" value="4">
+          <span id="sizeLabel">4</span>
+        </label>
+        <label class="opt-row" id="fillModeRow">
+          <select id="shapeMode">
+            <option value="outline">Outline</option>
+            <option value="fill">Filled</option>
+            <option value="both">Outline+Fill</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="colors">
+        <div class="swatch-preview">
+          <div id="secondarySwatch" class="swatch back"></div>
+          <div id="primarySwatch" class="swatch front"></div>
+        </div>
+        <input type="color" id="colorPicker" value="#000000">
+        <div id="palette"></div>
+      </div>
+    </div>
+
+    <div id="canvasArea">
+      <div id="canvasWrap">
+        <canvas id="mainCanvas" width="800" height="600"></canvas>
+        <canvas id="overlayCanvas" width="800" height="600"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="statusbar">
+    <span id="coords">0, 0</span>
+    <span id="canvasSize">800 x 600</span>
+    <span id="toolHint">Rectangle Select: drag to select, drag inside to move, drag handles to resize, Delete to clear, Enter/click-outside to commit.</span>
+  </div>
+</div>
+
+<div id="newDialog" class="dialog hidden">
+  <div class="dialog-box">
+    <h3>New Canvas</h3>
+    <label>Width <input type="number" id="newWidth" value="800" min="1" max="4000"></label>
+    <label>Height <input type="number" id="newHeight" value="600" min="1" max="4000"></label>
+    <div class="dialog-actions">
+      <button id="newCancel">Cancel</button>
+      <button id="newOk">Create</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
